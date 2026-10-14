@@ -1,0 +1,39 @@
+/* ============================================================
+   Hill Climber - global styles
+   ============================================================ */
+* { box-sizing: border-box; }
+body { margin:0; background:#1a1a2e; color:#eee; font-family:sans-serif; }
+#app { display:flex; gap:10px; padding:10px; align-items:flex-start; }
+#left { flex:1; min-width:0; position:relative; }
+canvas { display:block; background:#87CEEB; border-radius:8px; width:100%; max-width:960px; }
+#side { width:320px; background:#252540; padding:12px; border-radius:8px;
+        max-height:90vh; overflow-y:auto; font-size:13px; }
+#side h3 { margin:8px 0 6px; font-size:14px; color:#FFC600; border-bottom:1px solid #444; padding-bottom:4px;}
+#side label { display:block; margin:6px 0; }
+#side label span { display:inline-block; width:130px; color:#bbb; }
+#side input[type=number] { width:70px; padding:3px 5px; background:#1a1a2e; color:#fff;
+                            border:1px solid #444; border-radius:3px; }
+#side select { width:150px; padding:3px 5px; background:#1a1a2e; color:#fff;
+               border:1px solid #444; border-radius:3px; }
+#side button { margin:3px 2px; padding:6px 10px; border:none; border-radius:4px;
+               background:#444; color:#fff; cursor:pointer; font-size:12px; user-select:none; }
+#side button:hover { background:#666; }
+#side button.primary { background:#2d8f4e; }
+#side button.warn { background:#c0392b; }
+#side .row { display:flex; gap:6px; flex-wrap:wrap; }
+.file-label { display:inline-block; margin:3px 2px; padding:6px 10px;
+              background:#444; color:#fff; border-radius:4px; cursor:pointer; font-size:12px; }
+.file-label:hover { background:#666; }
+.file-label input { display:none; }
+#curve { background:#1a1a2e; border:1px solid #444; border-radius:4px; margin-top:6px; }
+#controls { margin-top:10px; text-align:center; }
+#controls button { margin:4px; padding:8px 16px; border:none; border-radius:4px;
+                   background:#444; color:#fff; cursor:pointer; font-size:14px; user-select:none; }
+#controls button:hover { background:#666; }
+#controls button.on { background:#2d8f4e; }
+#controls button.mode.on { background:#c0392b; }
+#pedals { margin-top:8px; }
+#pedals button { width:130px; height:52px; font-size:17px; font-weight:bold; }
+#gas { background:#2d8f4e; } #gas:active { background:#1e6b3a; }
+#brake { background:#c0392b; } #brake:active { background:#8e2a1f; }
+#hint { text-align:center; margin:8px; font-size:12px; color:#888; }

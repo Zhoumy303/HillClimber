@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hill Climber · Neuroevolution Lab</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- ==================== Left: main stage ==================== -->
+  <main id="left">
+
+    <header id="topbar">
+      <div class="brand">
+        <div class="logo">⛰️</div>
+        <div class="brand-text">
+          <h1>HILL CLIMBER</h1>
+          <p>Neuroevolution · Off-road Training Lab</p>
+        </div>
+      </div>
+
+      <div class="modes">
+        <button id="modePlayer" class="mode" onclick="setMode('player')">🎮 Player</button>
+        <button id="modeAI" class="mode on" onclick="setMode('ai')">🧬 AI Training</button>
+        <button id="modeVersus" class="mode" onclick="setMode('versus')">⚔️ AI vs Player</button>
+        <button id="musicToggle" class="mode" onclick="toggleMusic()" title="Toggle background music">🔇 Music</button>
+      </div>
+    </header>
+
+    <div id="stage">
+      <canvas id="cv" width="960" height="440"></canvas>
+    </div>
+
+    <div id="controls">
+      <div class="speed-group">
+        <span class="ctrl-label">Speed</span>
+        <button id="btnSpeed1" onclick="setSpeed(1)">×1</button>
+        <button id="btnSpeed2" onclick="setSpeed(2)">×2</button>
+        <button id="btnSpeed3" onclick="setSpeed(3)">×3</button>
+        <button id="btnSpeedMax" onclick="setSpeed(0)">MAX</button>
+      </div>
+
+      <div id="pedals">
+        <button id="brake"
+                onmousedown="playerBrake=true" onmouseup="playerBrake=false"
+                onmouseleave="playerBrake=false"
+                ontouchstart="playerBrake=true;event.preventDefault()"
+                ontouchend="playerBrake=false">◀ Brake <kbd>A</kbd></button>
+        <button id="gas"
+                onmousedown="playerGas=true" onmouseup="playerGas=false"
+                onmouseleave="playerGas=false"
+                ontouchstart="playerGas=true;event.preventDefault()"
+                ontouchend="playerGas=false">Gas <kbd>D</kbd> ▶</button>
+      </div>
+    </div>
+
+    <div id="hint">
+      <kbd>A</kbd> / <kbd>←</kbd> brake &nbsp;·&nbsp; <kbd>D</kbd> / <kbd>→</kbd> / <kbd>Space</kbd> gas
+      &nbsp;·&nbsp; caught by the chase wall = dead &nbsp;·&nbsp; roof touching ground = flipped &nbsp;·&nbsp; water slows you down and doubles fuel use
+    </div>
+  </main>
+
+  <!-- ==================== Right: control panel ==================== -->
+  <aside id="side">
+
+    <div class="side-head">
+      <h2>⚙️ Control Panel</h2>
+      <span class="live-badge"><i></i>Live</span>
+    </div>
+
+    <details class="card" open>
+      <summary>🗺️ Map</summary>
+      <div class="card-body">
+        <label><span>Map Type</span>
+          <select id="set-mapKey" onchange="onMapChange()">
+            <option value="gentle">Gentle (Beginner)</option>
+            <option value="hills" selected>Hills (Default)</option>
+            <option value="mountains">Mountains (Hard)</option>
+            <option value="watery">Pools (Water)</option>
+          </select>
+        </label>
+      </div>
+    </details>
+
+    <details class="card" open>
+      <summary>🐛 Physics</summary>
+      <div class="card-body">
+        <label><span>Max Wheel Speed</span><input id="set-maxWheelAV" type="number" step="0.05" value="0.95"></label>
+        <label><span>Friction</span><input id="set-friction" type="number" step="0.1" value="1.3"></label>
+        <label><span>Gravity</span><input id="set-gravity" type="number" step="0.1" value="1.1"></label>
+        <label><span>Air Torque</span><input id="set-airTorque" type="number" step="0.005" value="0.030"></label>
+        <label><span>Stuck Time (frames)</span><input id="set-stuckTime" type="number" step="30" value="90"></label>
+      </div>
+    </details>
+
+    <details class="card" open>
+      <summary>💧 Water</summary>
+      <div class="card-body">
+        <label><span>Water Speed Ratio</span><input id="set-waterSpeed" type="number" step="0.05" value="0.25"></label>
+        <label><span>Water Fuel Multiplier</span><input id="set-waterFuel" type="number" step="0.1" value="1.5"></label>
+      </div>
+    </details>
+
+    <details class="card" open>
+      <summary>⛽ Fuel &amp; Chase</summary>
+      <div class="card-body">
+        <label><span>Start Fuel</span><input id="set-fuelMax" type="number" step="10" value="120"></label>
+        <label><span>Idle Fuel (/step)</span><input id="set-fuelIdle" type="number" step="0.005" value="0.015"></label>
+        <label><span>Gas Fuel (/step)</span><input id="set-fuelGas" type="number" step="0.005" value="0.025"></label>
+        <label><span>Fuel Can Refill</span><input id="set-fuelPickup" type="number" step="10" value="80"></label>
+        <label><span>Chase Wall Speed</span><input id="set-chaseSpeed" type="number" step="0.1" value="1.6"></label>
+        <label><span>Chase Start Gap</span><input id="set-chaseGap" type="number" step="50" value="500"></label>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary>🧬 Evolution</summary>
+      <div class="card-body">
+        <p class="note">Changing these requires restarting the training run.</p>
+        <label><span>Population</span><input id="set-population" type="number" step="5" value="50"></label>
+        <label><span>Mutation Rate</span><input id="set-mutationRate" type="number" step="0.02" value="0.10"></label>
+        <label><span>Elitism</span><input id="set-elitism" type="number" step="0.05" value="0.15"></label>
+        <label><span>Random New Blood</span><input id="set-randomBehaviour" type="number" step="0.05" value="0.20"></label>
+        <button class="warn block" onclick="applyEvolutionSettings()">🚀 Apply &amp; Restart Training</button>
+      </div>
+    </details>
+
+    <details class="card" open>
+      <summary>💾 Training Progress</summary>
+      <div class="card-body">
+        <div class="row">
+          <button class="primary" onclick="saveToLocal()">💽 Save to Browser</button>
+          <button onclick="loadFromLocal()">📥 Load from Browser</button>
+        </div>
+        <div class="row">
+          <button onclick="exportToFile()">📤 Export JSON</button>
+          <label class="file-label">📂 Import JSON<input type="file" accept=".json" onchange="importFromFile(event)"></label>
+        </div>
+        <button class="warn block" onclick="resetAll()">🗑️ Erase All Training Data</button>
+      </div>
+    </details>
+
+    <details class="card" open>
+      <summary>📈 Training Curve</summary>
+      <div class="card-body">
+        <canvas id="curve" width="290" height="90"></canvas>
+        <div id="stats"></div>
+      </div>
+    </details>
+
+  </aside>
+</div>
+
+<script src="Neuroevolution.js"></script>
+<script src="maps.js"></script>
+<script src="settings.js"></script>
+<script src="terrain.js"></script>
+<script src="physics.js"></script>
+<script src="vehicle.js"></script>
+<script src="state.js"></script>
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script src="persist.js"></script>
+<script src="boot.js"></script>
+
+<!-- ==================== 背景音乐（Web Audio 程序化生成） ==================== -->
+<script>
+(function () {
+    'use strict';
+
+    // ---- 音乐状态 ----
+    let audioCtx = null;
+    let masterGain = null;
+    let musicEnabled = false;
+    let schedulerTimer = null;
+    let nextNoteTime = 0;
+    let stepIndex = 0;
+    let hatBuffer = null;
+
+    // ---- 音乐参数 ----
+    const BPM = 100;
+    const STEP = 60 / BPM / 2;      // 八分音符时长
+    const A3 = 220;                 // 参考音 A3
+    const LOOKAHEAD = 0.15;         // 提前调度窗口（秒）
+
+    // 半音 → 频率
+    function noteFreq(semi) {
+        return A3 * Math.pow(2, semi / 12);
+    }
+
+    // 贝斯模式（相对 A3 的半音；-1 = 休止）
+    // A2 → D3 → E3 → G3 的四小节走向
+    const bassPattern = [
+        -12, -1, -12, -1,
+         -7, -1,  -7, -1,
+         -5, -1,  -5, -1,
+         -2, -1,  -2, -1
+    ];
+
+    // 主旋律（A 小调五声音阶：A C D E G）
+    const melodyPattern = [
+        12, 15, 19, 15,
+        17, 15, 12, -1,
+        10, 12, 15, 12,
+        10, -1,  7, -1
+    ];
+
+    // ---- 初始化 AudioContext ----
+    function ensureCtx() {
+        if (audioCtx) return audioCtx;
+        try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return null;
+            audioCtx = new AC();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0;
+            masterGain.connect(audioCtx.destination);
+        } catch (e) {
+            console.warn('Web Audio not available:', e);
+            return null;
+        }
+        return audioCtx;
+    }
+
+    // ---- 缓存 hi-hat 噪声 ----
+    function getHatBuffer() {
+        if (hatBuffer) return hatBuffer;
+        const size = Math.floor(0.05 * audioCtx.sampleRate);
+        hatBuffer = audioCtx.createBuffer(1, size, audioCtx.sampleRate);
+        const data = hatBuffer.getChannelData(0);
+        for (let i = 0; i < size; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / size, 4);
+        }
+        return hatBuffer;
+    }
+
+    // ---- 单个音符：低音 ----
+    function playBass(time, semi) {
+        if (semi < 0) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        osc.type = 'triangle';
+        osc.frequency.value = noteFreq(semi);
+        filter.type = 'lowpass';
+        filter.frequency.value = 800;
+
+        gain.gain.setValueAtTime(0.0001, time);
+        gain.gain.exponentialRampToValueAtTime(0.20, time + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + STEP * 0.95);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+        osc.start(time);
+        osc.stop(time + STEP);
+    }
+
+    // ---- 单个音符：主旋律 ----
+    function playMelody(time, semi) {
+        if (semi < 0) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        osc.type = 'triangle';
+        osc.frequency.value = noteFreq(semi);
+        filter.type = 'lowpass';
+        filter.frequency.value = 2200;
+
+        gain.gain.setValueAtTime(0.0001, time);
+        gain.gain.exponentialRampToValueAtTime(0.085, time + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + STEP * 0.85);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+        osc.start(time);
+        osc.stop(time + STEP);
+    }
+
+    // ---- 打击乐：hi-hat ----
+    function playHat(time) {
+        const src = audioCtx.createBufferSource();
+        src.buffer = getHatBuffer();
+        const gain = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        filter.type = 'highpass';
+        filter.frequency.value = 6000;
+        gain.gain.value = 0.035;
+
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+        src.start(time);
+    }
+
+    // ---- 调度器：每 40ms 检查一次，提前排好音符 ----
+    function schedule() {
+        if (!audioCtx || !musicEnabled) return;
+        while (nextNoteTime < audioCtx.currentTime + LOOKAHEAD) {
+            const step = stepIndex % 16;
+            playBass(nextNoteTime, bassPattern[step]);
+            playMelody(nextNoteTime, melodyPattern[step]);
+            if (step % 2 === 0) playHat(nextNoteTime);
+
+            nextNoteTime += STEP;
+            stepIndex++;
+        }
+    }
+
+    // ---- 开始 / 停止 ----
+    function startMusic() {
+        const ctx = ensureCtx();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        musicEnabled = true;
+        stepIndex = 0;
+        nextNoteTime = ctx.currentTime + 0.1;
+
+        masterGain.gain.cancelScheduledValues(ctx.currentTime);
+        masterGain.gain.setValueAtTime(Math.max(masterGain.gain.value, 0.0001), ctx.currentTime);
+        masterGain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.6);
+
+        if (!schedulerTimer) {
+            schedulerTimer = setInterval(schedule, 40);
+        }
+        updateMusicBtn(true);
+    }
+
+    function stopMusic() {
+        musicEnabled = false;
+        if (audioCtx && masterGain) {
+            const now = audioCtx.currentTime;
+            masterGain.gain.cancelScheduledValues(now);
+            masterGain.gain.setValueAtTime(Math.max(masterGain.gain.value, 0.0001), now);
+            masterGain.gain.linearRampToValueAtTime(0.0001, now + 0.35);
+        }
+        if (schedulerTimer) {
+            clearInterval(schedulerTimer);
+            schedulerTimer = null;
+        }
+        updateMusicBtn(false);
+    }
+
+    function updateMusicBtn(on) {
+        const btn = document.getElementById('musicToggle');
+        if (!btn) return;
+        if (on) {
+            btn.classList.add('on');
+            btn.textContent = '🎵 Music On';
+        } else {
+            btn.classList.remove('on');
+            btn.textContent = '🔇 Music';
+        }
+    }
+
+    // ---- 全局开关 ----
+    window.toggleMusic = function () {
+        if (musicEnabled) stopMusic();
+        else startMusic();
+    };
+
+    // 页面加载后同步一下按钮初始文本
+    function init() {
+        updateMusicBtn(false);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
+
+</body>
+</html>
